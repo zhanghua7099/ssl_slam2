@@ -32,6 +32,7 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
     int count = 0;
     int point_size = pc_in->points.size() - 1;
 
+    // 首先将无序的点云，投影到二维点矩阵中。
     for (int i = 0; i < (int) pc_in->points.size(); i++)
     {
         //pc_in->points[i].intensity = (double)i / pc_in->points.size();
@@ -40,7 +41,7 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
         // 相机到点的距离d
         double distance = sqrt(pc_in->points[i].x * pc_in->points[i].x + pc_in->points[i].y * pc_in->points[i].y + pc_in->points[i].z * pc_in->points[i].z);
         
-        // 点与x轴的水平夹角theta_i。eq. (1)
+        // 点与x轴的水平夹角theta_i，含义见公式(1)
         double angle = atan2(pc_in->points[i].x, pc_in->points[i].z) * 180 / M_PI;
         count++;
 
@@ -54,7 +55,7 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
                     laserCloudScans.push_back(pc_temp);
             }
             count =0;
-            // 似乎是在找最大的水平夹角？
+            // 似乎是在找最大的水平夹角？？？
             last_angle = angle;
         }
     }

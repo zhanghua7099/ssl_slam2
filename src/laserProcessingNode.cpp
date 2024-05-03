@@ -120,6 +120,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "main");
     ros::NodeHandle nh;
 
+    // 这几行设置似乎并没有起作用。
     int scan_line = 64;
     double vertical_angle = 2.0;
     double scan_period= 0.1;
