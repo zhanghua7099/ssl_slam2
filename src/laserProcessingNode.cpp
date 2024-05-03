@@ -51,7 +51,7 @@ int skip_frames = 1;
 void laser_processing(){
     while(1){
         if(!pointCloudBuf.empty()){
-            //read data
+            // Step 1: 读取订阅的点云数据
             mutex_lock.lock();
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZRGB>());
             pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
@@ -64,38 +64,44 @@ void laser_processing(){
                 continue;
             //ROS_INFO("start");
 
-
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGB>());          
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGB>());
 
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            laserProcessing.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
+            
+            // Step 2: 提取点云中的edge和平面特征
+            laserProcessing.featureExtraction(pointcloud_in, pointcloud_edge, pointcloud_surf);
             end = std::chrono::system_clock::now();
             std::chrono::duration<float> elapsed_seconds = end - start;
             total_frame++;
 
-
             float time_temp = elapsed_seconds.count() * 1000;
             total_time+=time_temp;
-            if(total_frame%500==0)
+            if(total_frame % 500 == 0)
                 ROS_INFO("average laser processing time %f ms \n \n", total_time/total_frame);
             //ROS_INFO("total_points %d",pointcloud_in->points.size());
+            
+            // Step 3: 发布处理后的点云结果
             sensor_msgs::PointCloud2 laserCloudFilteredMsg;
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>());  
-            *pointcloud_filtered+=*pointcloud_edge;
-            *pointcloud_filtered+=*pointcloud_surf;
+            
+            // 相当于把edge和surf特征叠加，方便可视化？后续节点并未使用这个消息。
+            *pointcloud_filtered += *pointcloud_edge;
+            *pointcloud_filtered += *pointcloud_surf;
             pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
             laserCloudFilteredMsg.header.stamp = pointcloud_time;
             laserCloudFilteredMsg.header.frame_id = "base_link";
             pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
 
+            // 发布提取的边缘
             sensor_msgs::PointCloud2 edgePointsMsg;
             pcl::toROSMsg(*pointcloud_edge, edgePointsMsg);
             edgePointsMsg.header.stamp = pointcloud_time;
             edgePointsMsg.header.frame_id = "base_link";
             pubEdgePoints.publish(edgePointsMsg);
-
+            
+            // 发布提取的SURF特征
             sensor_msgs::PointCloud2 surfPointsMsg;
             pcl::toROSMsg(*pointcloud_surf, surfPointsMsg);
             surfPointsMsg.header.stamp = pointcloud_time;

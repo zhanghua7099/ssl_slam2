@@ -22,6 +22,7 @@ public:
 	double value;
 	Double2d(int id_in, double value_in);
 };
+
 //points info class
 class PointsInfo{
 public:

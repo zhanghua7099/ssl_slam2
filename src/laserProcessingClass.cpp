@@ -14,7 +14,8 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
     std::vector<int> indices;
     pcl::removeNaNFromPointCloud(*pc_in, indices);
    
-    //coordinate transform
+    // coordinate transform
+    // 把相机坐标系下的点云转换到body坐标系。(z轴向前->z轴向上)
     for (int i = 0; i < (int) pc_in->points.size(); i++){
         double new_x = pc_in->points[i].z;
         double new_y = -pc_in->points[i].x;
@@ -24,36 +25,38 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
         pc_in->points[i].z = new_z;
     }
 
-
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> laserCloudScans;
 
-    double last_angle = atan2(pc_in->points[0].z,pc_in->points[0].y) * 180 / M_PI;
-    int count =0;
-    int point_size = pc_in->points.size()-1;
+    // 论文Sec. III.A节
+    double last_angle = atan2(pc_in->points[0].z, pc_in->points[0].y) * 180 / M_PI;
+    int count = 0;
+    int point_size = pc_in->points.size() - 1;
+
     for (int i = 0; i < (int) pc_in->points.size(); i++)
     {
-     
         //pc_in->points[i].intensity = (double)i / pc_in->points.size();
-        int scanID=0;
+        int scanID = 0;
+        
+        // 相机到点的距离d
         double distance = sqrt(pc_in->points[i].x * pc_in->points[i].x + pc_in->points[i].y * pc_in->points[i].y + pc_in->points[i].z * pc_in->points[i].z);
-        double angle = atan2(pc_in->points[i].x,pc_in->points[i].z) * 180 / M_PI;
+        
+        // 点与x轴的水平夹角theta_i。eq. (1)
+        double angle = atan2(pc_in->points[i].x, pc_in->points[i].z) * 180 / M_PI;
         count++;
 
-        if(fabs(angle - last_angle)>0.05){
-            
-            if(count>30){
+        if(fabs(angle - last_angle) > 0.05){
+            if(count > 30){
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
-                for(int k=0;k<count;k++){
-                    pc_temp->push_back(pc_in->points[i-count+k+1]);
-
+                for(int k = 0;k < count; k++){
+                    pc_temp->push_back(pc_in->points[i - count + k + 1]);
                 }
-                if(pc_temp->points.size()>0)
+                if(pc_temp->points.size() > 0)
                     laserCloudScans.push_back(pc_temp);
             }
             count =0;
+            // 似乎是在找最大的水平夹角？
             last_angle = angle;
         }
-
     }
 
     //ROS_WARN_ONCE("total points array %d", laserCloudScans.size());
@@ -73,16 +76,13 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
             double diffX = laserCloudScans[i]->points[j - 5].x + laserCloudScans[i]->points[j - 4].x + laserCloudScans[i]->points[j - 3].x + laserCloudScans[i]->points[j - 2].x + laserCloudScans[i]->points[j - 1].x - 10 * laserCloudScans[i]->points[j].x + laserCloudScans[i]->points[j + 1].x + laserCloudScans[i]->points[j + 2].x + laserCloudScans[i]->points[j + 3].x + laserCloudScans[i]->points[j + 4].x + laserCloudScans[i]->points[j + 5].x;
             double diffY = laserCloudScans[i]->points[j - 5].y + laserCloudScans[i]->points[j - 4].y + laserCloudScans[i]->points[j - 3].y + laserCloudScans[i]->points[j - 2].y + laserCloudScans[i]->points[j - 1].y - 10 * laserCloudScans[i]->points[j].y + laserCloudScans[i]->points[j + 1].y + laserCloudScans[i]->points[j + 2].y + laserCloudScans[i]->points[j + 3].y + laserCloudScans[i]->points[j + 4].y + laserCloudScans[i]->points[j + 5].y;
             double diffZ = laserCloudScans[i]->points[j - 5].z + laserCloudScans[i]->points[j - 4].z + laserCloudScans[i]->points[j - 3].z + laserCloudScans[i]->points[j - 2].z + laserCloudScans[i]->points[j - 1].z - 10 * laserCloudScans[i]->points[j].z + laserCloudScans[i]->points[j + 1].z + laserCloudScans[i]->points[j + 2].z + laserCloudScans[i]->points[j + 3].z + laserCloudScans[i]->points[j + 4].z + laserCloudScans[i]->points[j + 5].z;
-            Double2d distance(j,diffX * diffX + diffY * diffY + diffZ * diffZ);
+            Double2d distance(j, diffX * diffX + diffY * diffY + diffZ * diffZ);
             cloudCurvature.push_back(distance);
 
         }
 
-        featureExtractionFromSector(laserCloudScans[i],cloudCurvature, pc_out_edge, pc_out_surf);
-            
-    
+        featureExtractionFromSector(laserCloudScans[i],cloudCurvature, pc_out_edge, pc_out_surf);    
     }
-
 
     //remove ground point
     /*
@@ -107,7 +107,6 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl
     { 
         return a.value < b.value; 
     });
-
 
     int largestPickedNum = 0;
     std::vector<int> picked_points;
@@ -160,10 +159,8 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl
             pc_out_surf->push_back(pc_in->points[ind]);
         }
     }
-    
-
-
 }
+
 LaserProcessingClass::LaserProcessingClass(){
     
 }
