@@ -58,7 +58,6 @@ Eigen::Isometry3d last_pose = Eigen::Isometry3d::Identity();
 int stamp = 0;
 bool saveMapCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
 {
-    
     mapOptimization.optimizeGraph(stamp, mapOptimization.getFrameNum()-1);
     stamp = mapOptimization.getFrameNum();
     mapOptimization.saveMap(map_path);
@@ -103,19 +102,22 @@ void map_optimization(){
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge_in(new pcl::PointCloud<pcl::PointXYZRGB>());
             pcl::fromROSMsg(*pointCloudEdgeBuf.front(), *pointcloud_edge_in);
             pcl::fromROSMsg(*pointCloudSurfBuf.front(), *pointcloud_surf_in);
+
+            // 初始化当前pose为单位阵
             Eigen::Isometry3d current_pose = Eigen::Isometry3d::Identity();
+            // 更新为里程计节点的pose
             current_pose.rotate(Eigen::Quaterniond(odometryBuf.front()->pose.pose.orientation.w,odometryBuf.front()->pose.pose.orientation.x,odometryBuf.front()->pose.pose.orientation.y,odometryBuf.front()->pose.pose.orientation.z));  
             current_pose.pretranslate(Eigen::Vector3d(odometryBuf.front()->pose.pose.position.x,odometryBuf.front()->pose.pose.position.y,odometryBuf.front()->pose.pose.position.z));
+            
             ros::Time pointcloud_time = (odometryBuf.front())->header.stamp;
             pointCloudEdgeBuf.pop();
             pointCloudSurfBuf.pop();
             odometryBuf.pop();
             mutex_lock.unlock();
-            total_frame++;   
+            total_frame++;
             if(total_frame%10 == 0) 
                 ROS_INFO("total_frame %d", total_frame);
             update_count++;
-
 
             Eigen::Isometry3d delta_transform = last_pose.inverse() * current_pose;
             double displacement = delta_transform.translation().squaredNorm();
@@ -123,7 +125,7 @@ void map_optimization(){
             if(angular_change>90) angular_change = fabs(180 - angular_change);
             if(displacement>min_map_update_distance || angular_change>min_map_update_angle || update_count>min_map_update_frame){
                 last_pose = current_pose;
-                update_count=0;
+                update_count = 0;
                 mapOptimization.addPoseToGraph(pointcloud_edge_in, pointcloud_surf_in, current_pose);
             }
 
@@ -172,7 +174,7 @@ int main(int argc, char **argv)
     ros::Subscriber subOdometry = nh.subscribe<nav_msgs::Odometry>("/odom", 100, odomCallback);
 
     //map saving service
-    ros::ServiceServer srv_save = nh.advertiseService("save_map", saveMapCallback);
+    ros::ServiceServer srv_save = nh.advertiseService("/save_map", saveMapCallback);
 
     map_pub = nh.advertise<sensor_msgs::PointCloud2>("/map", 100);
     std::thread map_optimization_process{map_optimization};
