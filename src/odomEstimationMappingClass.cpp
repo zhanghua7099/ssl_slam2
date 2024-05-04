@@ -10,6 +10,7 @@ void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution){
     laserCloudSurfMap = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
 
     //downsampling size
+    // 设置voxel的大小为0.05 m
     downSizeFilterEdge.setLeafSize(map_resolution, map_resolution, map_resolution);
     downSizeFilterSurf.setLeafSize(map_resolution * 2, map_resolution * 2, map_resolution * 2);
 
@@ -42,8 +43,11 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZR
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsampledEdgeCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsampledSurfCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
-    downSamplingToMap(edge_in,downsampledEdgeCloud,surf_in,downsampledSurfCloud);
+
+    // 将采样边缘和平面特征，降采样为voxel
+    downSamplingToMap(edge_in, downsampledEdgeCloud, surf_in, downsampledSurfCloud);
     //ROS_WARN("point nyum%d,%d",(int)downsampledEdgeCloud->points.size(), (int)downsampledSurfCloud->points.size());
+    
     if(laserCloudCornerMap->points.size()>10 && laserCloudSurfMap->points.size()>50){
         kdtreeEdgeMap->setInputCloud(laserCloudCornerMap);
         kdtreeSurfMap->setInputCloud(laserCloudSurfMap);
@@ -55,8 +59,8 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZR
 
             problem.AddParameterBlock(parameters, 7, new PoseSE3Parameterization());
             
-            addEdgeCostFactor(downsampledEdgeCloud,laserCloudCornerMap,problem,loss_function);
-            addSurfCostFactor(downsampledSurfCloud,laserCloudSurfMap,problem,loss_function);
+            addEdgeCostFactor(downsampledEdgeCloud, laserCloudCornerMap, problem, loss_function);
+            addSurfCostFactor(downsampledSurfCloud, laserCloudSurfMap, problem, loss_function);
 
             ceres::Solver::Options options;
             options.linear_solver_type = ceres::DENSE_QR;

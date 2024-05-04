@@ -82,6 +82,7 @@ void odom_estimation(){
             mutex_lock.unlock();
 
             if(is_odom_inited == false){
+                // 第0帧则初始化地图
                 odomEstimation.initMapWithPoints(pointcloud_edge_in, pointcloud_surf_in);
                 is_odom_inited = true;
                 ROS_INFO("odom inited");
@@ -157,7 +158,10 @@ int main(int argc, char **argv)
     lidar_param.setMaxDistance(max_dis);
     lidar_param.setMinDistance(min_dis);
 
+    // 初始化
+    // lidar_param未被调用
     odomEstimation.init(lidar_param, map_resolution);
+
     // ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points_filtered", 100, velodyneHandler);
     ros::Subscriber subEdgeLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100, velodyneEdgeHandler);
     ros::Subscriber subSurfLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100, velodyneSurfHandler);

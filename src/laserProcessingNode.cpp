@@ -63,7 +63,8 @@ void laser_processing(){
             if(frame_count%skip_frames!=0)
                 continue;
             //ROS_INFO("start");
-
+            
+            // 提取到的特征存储到pointcloud_edge和pointcloud_surf中
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGB>());          
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGB>());
 
